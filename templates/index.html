@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ML Tool - Consistently Excellent</title>
+  </head>
+
+  <body>
+		<!-- <meta http-equiv="refresh" content="1"/> -->
+    <h2>Available models</h2>
+		<form action="/train" method="POST">
+			{% for network in networks %}
+				{% if not network.trained %}
+				<input type="radio" name="network" id="{{network}}" 
+					value="{{network}}"> {{network}} </input><br>
+				{% endif %}
+			{% endfor %}
+			<input type="submit" value="train">Train the network</input>
+		</form>
+  </body>
+</html>
