@@ -1,20 +1,111 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>ML Tool - Consistently Excellent</title>
-  </head>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>Genius</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/bootstrap.css')}}">
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+    </style>
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/bootstrap-responsive.css')}}">
+
+    <!-- Fav and touch icons -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="http://getbootstrap.com/2.3.2/assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="http://getbootstrap.com/2.3.2/assets/ico/apple-touch-icon-114-precomposed.png">
+      <link rel="apple-touch-icon-precomposed" sizes="72x72" href="http://getbootstrap.com/2.3.2/assets/ico/apple-touch-icon-72-precomposed.png">
+                    <link rel="apple-touch-icon-precomposed" href="http://getbootstrap.com/2.3.2/assets/ico/apple-touch-icon-57-precomposed.png">
+                                   <link rel="shortcut icon" href="http://getbootstrap.com/2.3.2/assets/ico/favicon.png">
+  <style type="text/css"></style></head>
 
   <body>
-		<!-- <meta http-equiv="refresh" content="1"/> -->
-    <h2>Available models</h2>
-		<form action="/train" method="POST">
-			{% for network in networks %}
-				{% if not network.trained %}
-				<input type="radio" name="network" id="{{network}}" 
-					value="{{network}}"> {{network}} </input><br>
-				{% endif %}
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar collapsed" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="brand" href="http://getbootstrap.com/2.3.2/examples/starter-template.html#">Genius - Consistently Excellent</a>
+          <div class="nav-collapse collapse" style="height: 0px;">
+            <ul class="nav">
+              <li class="active"><a href="http://getbootstrap.com/2.3.2/examples/starter-template.html#">Home</a></li>
+              <li><a href="http://getbootstrap.com/2.3.2/examples/starter-template.html#about">About</a></li>
+              <li><a href="http://getbootstrap.com/2.3.2/examples/starter-template.html#contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <h2>Available models</h2>
+			<p>			
+			<form action="/train" method="POST">
+				{% for n in networks if not n.trained%}
+					<input type="radio" name="network" id="{{n}}" 
+						value="{{n}}"> {{n}} </input><br>
+				{% endfor %}
+				<br>
+				<input type="submit" value="Train the network"/>
+			</form>
+			<p>
+			<h2>Model(s) in training</h2>
+			<p>
+			{% for n in networks if n.in_training %}
+				<h3>{{n}}</h3><br>
 			{% endfor %}
-			<input type="submit" value="train">Train the network</input>
-		</form>
-  </body>
-</html>
+			<br>
+			<h2>Trained models</h2>
+			<p>
+			{% for n in networks if n.trained %}
+				<h4>{{n}} </h4>
+				<form action="/output/{{n}}" method="POST">
+				{% for input in range(n.number_of_inputs)%}
+					<input type="number" placeholder="Input {{input}}" name="{{input}}">
+					<br>
+				{% endfor %}
+				<input type="submit" value="Get the output"/>
+				</form>
+				{% if result is not none and result.network == n %}
+					<p> 
+					The output of {{result.inputs}} is 
+					{% if result.outputs|length == 1 %}
+						{{result.outputs[0]}}
+					{% else %}
+						{{result.outputs}}
+					{% endif %}
+				{% endif %}
+			{% else %}
+				None available
+			{% endfor %}
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="{{ url_for('static', filename='jquery.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-transition.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-alert.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-dropdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-scrollspy.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-tab.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-tooltip.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-popover.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-button.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-collapse.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-carousel.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-typeahead.js') }}"></script>
+
+  
+
+</body></html>

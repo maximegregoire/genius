@@ -2,7 +2,8 @@ import math
 import random
 import itertools
 import collections
-from tools import dropout, add_bias
+from scipy.stats import bernoulli
+from activation_functions import sigmoid_function, tanh_function, linear_function
 
 try: 
     import numpypy as np
@@ -20,6 +21,28 @@ default_settings = {
     
     "batch_size"            : 1,        # 1 := online learning, 0 := entire trainingset as batch, else := batch learning size
 }
+
+class Instance:
+    # This is a simple encapsulation of a `input signal : output signal`
+    # pair in our training set.
+    def __init__(self, features, target):
+        self.features = np.array(features)
+        self.targets  = np.array(target)
+#endclass Instance
+
+
+def dropout( X, p = 0. ):
+    if p > 0:
+        retain_p = 1 - p
+        X = np.multiply( bernoulli.rvs( retain_p, size = X.shape ), X )
+        X /= retain_p
+    return X
+#end  
+
+
+def add_bias(A):
+    return np.hstack(( np.ones((A.shape[0],1)), A )) # Add 1 as bias.
+#end addBias
 
 class NeuralNet:
     def __init__(self, settings ):
@@ -179,12 +202,13 @@ class NeuralNet:
     #end
     
     
-    def save_to_file(self, filename = "network.pkl" ):
+    def save_to_file(self, filename = "networks/XOR_Operator/XOR_Operator.obj" ):
         import cPickle
         """
         This save method pickles the parameters of the current network into a 
         binary file for persistant storage.
         """
+        print("Saving net\n")
         with open( filename , 'wb') as file:
             store_dict = {
                 "n_inputs"             : self.n_inputs,
@@ -200,11 +224,29 @@ class NeuralNet:
     #end
     
     @staticmethod
-    def load_from_file( filename = "network.pkl" ):
+    def load_from_file( filename = "networks/XOR_Operator/XOR_Operator.obj" ):
         """
         Load the complete configuration of a previously stored network.
         """
-        network = NeuralNet( 0, 0, 0, 0, [0] )
+        settings = {
+            # Required settings
+            "n_inputs"              : 2,        # Number of network input signals
+            "n_outputs"             : 1,        # Number of desired outputs from the network
+            "n_hidden_layers"       : 1,        # Number of nodes in each hidden layer
+            "n_hiddens"             : 2,        # Number of hidden layers in the network
+            "activation_functions"  : [ tanh_function, sigmoid_function ], # specify activation functions per layer eg: [ hidden_layer, output_layer ]
+            
+            # Optional settings
+            "weights_low"           : -0.1,     # Lower bound on initial weight range
+            "weights_high"          : 0.1,      # Upper bound on initial weight range
+            "save_trained_network"  : False,    # Whether to write the trained weights to disk
+            
+            "input_layer_dropout"   : 0.0,      # dropout fraction of the input layer
+            "hidden_layer_dropout"  : 0.1,      # dropout fraction in all hidden layers
+            
+            "batch_size"            : 0,        # 1 := online learning, 0 := entire trainingset as batch, else := batch learning size
+        }
+        network = NeuralNet(settings)
         
         with open( filename , 'rb') as file:
             import cPickle

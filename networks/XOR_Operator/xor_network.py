@@ -1,8 +1,10 @@
 from activation_functions import sigmoid_function, tanh_function, linear_function,\
                                  LReLU_function, ReLU_function, elliot_function, symmetric_elliot_function
-from neuralnet import NeuralNet
-from tools import Instance
+from neuralnet import NeuralNet, Instance
 import numpy as np
+import os.path
+
+network = None
 
 def train_xor_network():
     # two training sets
@@ -30,6 +32,7 @@ def train_xor_network():
 
 
     # initialize the neural network
+    global network 
     network = NeuralNet( settings )
 
     # load a stored network configuration
@@ -53,7 +56,16 @@ def train_xor_network():
                     target   = str(instance.targets)
                 )
 
+    # save the trained network
+    network.save_to_file("networks/XOR_Operator/XOR_Operator.obj")
+#end train_xor_network
 
-    if settings.get("save_trained_network", False):
-        # save the trained network
-        network.save_to_file( "xor_trained_configuration.pkl" )
+def get_output(inputs):
+    return network.update(np.array([float(i) for i in inputs]))
+    
+def load_network():
+    if os.path.isfile("networks/XOR_Operator/XOR_Operator.obj"):
+        global network
+        network = NeuralNet.load_from_file("networks/XOR_Operator/XOR_Operator.obj")
+    else:
+        raise ValueError("networks/XOR_Operator/XOR_Operator.obj")
