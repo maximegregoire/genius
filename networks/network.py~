@@ -40,17 +40,17 @@ class Network:
     def getSampleTraining(self, number_of_lines):
         if not os.path.isfile(self.training_path):
             raise ValueError("Cannot find the training file : " + self.training_path)
-        self.training_data = genfromtxt(self.training_path, delimiter=self.delimitation)
-        self.number_of_columns = len(self.training_data[0])
-        return self.training_data[0:number_of_lines]
+        self.data = genfromtxt(self.training_path, delimiter=self.delimitation)
+        self.number_of_columns = len(self.data[0])
+        return self.data[0:number_of_lines]
         
-    def getInputs(self, data):
-        if data == None:
+    def getInputs(self):
+        if self.data == None:
             raise ValueError("The data has not been loaded")
         self.inputs = np.array([i[input_start_column:input_end_column + 1] for i in data])
         
-    def getOutputs(self, data):
-        if data == None:
+    def getOutputs(self):
+        if self.data == None:
             raise ValueError("The data has not been loaded")
         if self.qualitative_outputs:
             self.outputs, self.outputs_onehot = convertOneHot(data, output_column)
@@ -59,11 +59,16 @@ class Network:
             self.outputs = np.array([i[self.output_column] for i in data])
         
     def train(self):
-        self.training_data = genfromtxt(self.training_path, delimiter=self.delimitation)        
-        self.testing_data = genfromtxt(self.testing_path, delimiter=self.delimitation)
-        training_outputs = getOutputs(self.training_data)
-        testing_outputs = getOutputs(self.testing_data)
-        
+        if self.trained or self.in_training:
+			raise ValueError("Network already trained")
+        if self.training_function == None:
+			raise ValueError("Training function undefined")
+        if self.input_start_column == 0 or self.input.end_column == 0 or self.output_column == 0:
+        	raise ValueError("Invalid inputs/output column")
+        self.in_training = True
+        self.training_function(training_path, testing_path, input_start_column, input_end_column, output_column)
+        self.in_training = False
+        self.trained = True;
         
     def get_output(self, inputs):
     	if output_function == None:
