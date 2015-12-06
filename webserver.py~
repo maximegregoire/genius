@@ -11,7 +11,6 @@ UPLOAD_FOLDER = 'upload'
 
 networks = network.networks_available()
 new_model = None
-network_in_training = None
 result = None
 app = Flask(__name__)
 app.secret_key = "f29jfd9fj903-0ld"
@@ -34,36 +33,29 @@ def train_and_redirect(network):
 @app.route('/', methods=['GET','POST'])
 def main_page():
     debug('In main_page method')
-    return render_template('index.html', networks=networks, result=result, model=new_model, network_in_training=network_in_training)
+    return render_template('index.html', networks=networks, result=result, model=new_model)
     
-@app.route('/newtraining', methods=['POST'])
+@app.route('/train', methods=['POST'])
 def train():
-    debug('In new training method')
+    debug('In training method')
     if request.method == 'POST':
         n = network.get_network(networks, request.form['network'])
         if n == None:
             debug("Error, can't find the network")
             return
         debug("Setting network in training")
-        print(n)
-        global network_in_training
-        network_in_training = n
-    return redirect('/')
     
-@app.route('/finishtraining', methods=['POST'])
-def finishTraining():
-    debug('In finish training method')
-    if request.method == 'POST':
         method = request.form['method']
         number_of_epochs = int(request.form['epochs'])
-        stop_at_100_accuracy = request.form.getlist('100') 
-        
-        global network_in_training
-        network_in_training.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+        stop_at_100_accuracy = request.form.getlist('100')
+        if not n.initialized:
+            n.initialize()
+            n.initialized = True
+        n.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+         
         #todo : update progress
-        #t = threading.Thread(target=train_and_redirect, args=(network_in_training,))
+        #t = threading.Thread(target=train_and_redirect, args=(n,))
         #t.start()
-        network_in_training = None
     return redirect('/')
     
 @app.route('/newmodel', methods=['POST'])

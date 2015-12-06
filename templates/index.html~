@@ -81,21 +81,21 @@
 
       <h2>Available models</h2>
 			<p>
-			{% if network_in_training is none %}
-			        <form action="/newtraining" method="POST">
+			    <form action="/train" method="POST">
 			        <table border="1">
 			            <tr>
 			            <td>Model name</td>
 			            <td>Status</td>
-			            <td>Current accuracy</td>
+			            <td>Current accuracy (%)</td>
 			            <td>Epochs for accuracy</td>
-			            <td>Best accuracy</td>
+			            <td>Best accuracy (%)</td>
 			            <td>Epochs for best accuracy
 			            </tr>
 				        {% for n in networks %}
 				        <tr>
 				        <td>
-					        <label><input type="radio" name="network" id="{{n}}" required
+					        <label><input type="radio" 
+					        {% if networks.index(n) == 0 %} checked {% endif %} name="network" id="{{n}}" required
 						        value="{{n}}"/> {{n}} 
 				            </label>
 				        </td>
@@ -106,12 +106,7 @@
 				        <td>{{n.epochs_for_best_accuracy}}</td>
 				        </tr>
 				        {% endfor %}
-			        </table>
-				        <input type="submit" value="Select the network"/>
-			        </form>
-			        <p>
-			{% else %}
-			    <form action="/finishtraining" method="POST">
+			        </table><br>
 				    <label><input type="radio" name="method" checked id="gradient_descent" required value="gradient_descent"/> Gradient Descent Optimization 
 			        </label><br>
 			        Number of epochs <input type="number" required name="epochs"><br>
@@ -119,7 +114,6 @@
 				    <input type="submit" value="Train the network"/>
 			    </form>
 			    <p>
-			{% endif %}
 			{% for n in networks if not n.in_training %}
 			{% else %}
 			    <h2>Model(s) in training</h2>

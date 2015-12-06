@@ -34,6 +34,16 @@ class Network:
         self.epochs_for_best_accuracy = 0
         self.epochs_for_accuracy = 0
         
+        self.sess = None
+        self.initialized = False
+        self.summary_writer = None
+        self.tf_train_step = None
+        self.tf_accuracy = None
+        self.summary_op = None
+        self.tf_in = None
+        self.tf_softmax_correct = None
+        
+        
         # CSV, separated by a coma
         self.delimitation = ','
             
@@ -64,8 +74,8 @@ class Network:
     def saveModel(self):
         with open('networks/models/' + self.name + '.pik', "wb") as f:
             dill.dump(self, f)
-        
-    def train(self, number_of_epochs, stop_at_100_accuracy):
+            
+    def initialize(self):
         training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)        
         testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
         
@@ -74,24 +84,24 @@ class Network:
             testing_outputs, testing_outputs_onehot = self.getQualitativeOutputs(testing_data)
             number_of_outputs = len(testing_outputs_onehot[0])
             # the placeholder for the inputs
-            tf_in = tf.placeholder("float", [None, self.number_of_columns], name="The_raw_data")
+            self.tf_in = tf.placeholder("float", [None, self.number_of_columns], name="The_raw_data")
 
             # the placeholder for the outputs
-            tf_softmax_correct = tf.placeholder("float", [None, number_of_outputs], name="The_correct_data")
+            self.tf_softmax_correct = tf.placeholder("float", [None, number_of_outputs], name="The_correct_data")
 
             tf_weight = tf.Variable(tf.zeros([self.number_of_columns, number_of_outputs]))
             tf_bias = tf.Variable(tf.zeros([number_of_outputs]))
-            tf_softmax = tf.nn.softmax(tf.matmul(tf_in,tf_weight) + tf_bias)
+            tf_softmax = tf.nn.softmax(tf.matmul(self.tf_in,tf_weight) + tf_bias)
 
             # Training via backpropagation
-            tf_cross_entropy = -tf.reduce_sum(tf_softmax_correct*tf.log(tf_softmax))
+            tf_cross_entropy = -tf.reduce_sum(self.tf_softmax_correct*tf.log(tf_softmax))
 
             # Train using tf.train.GradientDescentOptimizer
-            tf_train_step = tf.train.GradientDescentOptimizer(0.01).minimize(tf_cross_entropy)
+            self.tf_train_step = tf.train.GradientDescentOptimizer(0.01).minimize(tf_cross_entropy)
 
             # Add accuracy checking nodes
-            tf_correct_prediction = tf.equal(tf.argmax(tf_softmax,1), tf.argmax(tf_softmax_correct,1))
-            tf_accuracy = tf.reduce_mean(tf.cast(tf_correct_prediction, "float"))
+            tf_correct_prediction = tf.equal(tf.argmax(tf_softmax,1), tf.argmax(self.tf_softmax_correct,1))
+            self.tf_accuracy = tf.reduce_mean(tf.cast(tf_correct_prediction, "float"))
             
             # Recreate logging dir
             import shutil, os, sys
@@ -103,6 +113,7 @@ class Network:
             os.mkdir(TMPDir, 0755 )
             
             # Initialize and run
+            tf.Session().close()
             self.sess = tf.Session()
             #sess = tf.InteractiveSession()
             init = tf.initialize_all_variables()
@@ -110,24 +121,29 @@ class Network:
 
             # Build the summary operation based on the TF collection of Summaries.
             tf.train.write_graph(self.sess.graph_def, TMPDir + '/logsd','graph.pbtxt')
-
-
             
-            tf.scalar_summary("Accuracy:", tf_accuracy)
+            tf.scalar_summary("Accuracy:", self.tf_accuracy)
             tf.histogram_summary('weights', tf_weight)
             tf.histogram_summary('bias', tf_bias)
             tf.histogram_summary('softmax', tf_softmax)
-            tf.histogram_summary('accuracy', tf_accuracy)
-
-
+            tf.histogram_summary('accuracy', self.tf_accuracy)
             
-            summary_op = tf.merge_all_summaries()
-            #summary_writer = tf.train.SummaryWriter('./tenIrisSave/logs',graph_def=sess.graph_def)
-            summary_writer = tf.train.SummaryWriter(TMPDir + '/logs',self.sess.graph_def)
+            self.summary_op = tf.merge_all_summaries()
+            self.summary_writer = tf.train.SummaryWriter(TMPDir + '/logs',self.sess.graph_def)
 
-            print("Summary_op = " + str(summary_op))
             # This is for saving all our work
             saver = tf.train.Saver([tf_weight,tf_bias])
+        else:
+            raise ValueError("NOT IMPLEMENTED")
+        
+    def train(self, number_of_epochs, stop_at_100_accuracy):
+        training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)        
+        testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
+        
+        if self.qualitative_outputs:
+            training_outputs, training_outputs_onehot = self.getQualitativeOutputs(training_data)
+            testing_outputs, testing_outputs_onehot = self.getQualitativeOutputs(testing_data)
+            number_of_outputs = len(testing_outputs_onehot[0])
 
             # Run the training
 
@@ -135,16 +151,17 @@ class Network:
             saved=0
             result=0
             for i in range(number_of_epochs):
-                self.sess.run(tf_train_step, feed_dict={tf_in: training_data, tf_softmax_correct: training_outputs_onehot})
+                self.sess.run(self.tf_train_step, feed_dict={self.tf_in: training_data, self.tf_softmax_correct: training_outputs_onehot})
                 # Print accuracy
-                result = self.sess.run(tf_accuracy, feed_dict={tf_in: testing_data, tf_softmax_correct: testing_outputs_onehot})
+                result = self.sess.run(self.tf_accuracy, feed_dict={self.tf_in: testing_data, self.tf_softmax_correct: testing_outputs_onehot})
                 print "Run {},{}".format(i,result)
                 k.append(result)
-                summary_str = self.sess.run(summary_op,feed_dict={tf_in: testing_data, tf_softmax_correct: testing_outputs_onehot})
-                summary_writer.add_summary(summary_str, i)
+                #summary_str = self.sess.run(self.summary_op,feed_dict={self.tf_in: testing_data, self.tf_softmax_correct: testing_outputs_onehot})
+                #self.summary_writer.add_summary(summary_str, i)
+                self.epochs_for_accuracy += 1
                 if result >= self.best_accuracy:
                     self.best_accuracy = result
-                    self.epochs_for_best_accuracy = i
+                    self.epochs_for_best_accuracy = self.epochs_for_accuracy
                 
                 if stop_at_100_accuracy and result == 1 and saved == 0:
                     break
@@ -153,7 +170,6 @@ class Network:
                     #saver.save(self.sess,"./tenIrisSave/saveOne")
             
             self.accuracy = result
-            self.epochs_for_accuracy = number_of_epochs
             self.trained = True
             print("Network successfuly trained")
             
