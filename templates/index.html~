@@ -82,6 +82,7 @@
       <h2>Available models</h2>
 			<p>
 			    <form action="/train" method="POST">
+			    <div style="overflow-x:auto;">
 			        <table border="1">
 			            <tr>
 			            <td>Model name</td>
@@ -106,10 +107,14 @@
 				        <td>{{n.epochs_for_best_accuracy}}</td>
 				        </tr>
 				        {% endfor %}
-			        </table><br>
-				    <label><input type="radio" name="method" checked id="gradient_descent" required value="gradient_descent"/> Gradient Descent Optimization 
+			        </table>
+			        </div>
+			        <br>
+				    <label>
+				        <img src="{{ url_for('static',filename='img/gradient_descent.png')}}" height="100" width="100"/>
+				        <input type="radio" name="method" checked id="gradient_descent" required value="gradient_descent"/> Gradient Descent Optimization 
 			        </label><br>
-			        Number of epochs <input type="number" required name="epochs"><br>
+			        Number of epochs <input type="number" value="10" required name="epochs"><br>
 			        <input type="checkbox" name="100" value="100" checked>Stop if 100% accuracy is reached when testing<br>
 				    <input type="submit" value="Train the network"/>
 			    </form>

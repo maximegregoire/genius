@@ -15,7 +15,7 @@ result = None
 app = Flask(__name__)
 app.secret_key = "f29jfd9fj903-0ld"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-#app.debug = DEBUG
+app.debug = DEBUG
 
 def debug(s):
     if DEBUG:
@@ -36,26 +36,37 @@ def main_page():
     return render_template('index.html', networks=networks, result=result, model=new_model)
     
 @app.route('/train', methods=['POST'])
-def train():
-    debug('In training method')
+def modelSubmission():
+    debug('In model submission method')
     if request.method == 'POST':
+    
         n = network.get_network(networks, request.form['network'])
         if n == None:
             debug("Error, can't find the network")
             return
-        debug("Setting network in training")
-    
-        method = request.form['method']
-        number_of_epochs = int(request.form['epochs'])
-        stop_at_100_accuracy = request.form.getlist('100')
-        if not n.initialized:
-            n.initialize()
-            n.initialized = True
-        n.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
-         
-        #todo : update progress
-        #t = threading.Thread(target=train_and_redirect, args=(n,))
-        #t.start()
+            
+        if request.form['btn'] == 'Train':
+            debug("Training network")
+            method = request.form['method']
+            number_of_epochs = int(request.form['epochs'])
+            stop_at_100_accuracy = request.form.getlist('100')
+            if not n.initialized:
+                n.initialize()
+                n.initialized = True
+            n.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+             
+            #todo : update progress
+            #t = threading.Thread(target=train_and_redirect, args=(n,))
+            #t.start()
+        elif request.form['btn'] == 'Reset':
+            n.initialized = False
+            n.best_accuracy = 0
+            n.accuracy = 0
+            n.epochs_for_best_accuracy = 0
+            n.epochs_for_accuracy = 0
+            n.trained = False
+        
+        
     return redirect('/')
     
 @app.route('/newmodel', methods=['POST'])
