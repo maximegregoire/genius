@@ -1,0 +1,31 @@
+<h2>Initialize a new model</h2>
+{% if model is not none %}
+  <h3>{{model}} model</h3>
+  <h4>First 3 lines of the training file</h4>
+  <table border="1">
+  {% for row in model.getSampleTraining(3) %}
+    <tr>
+    {% for element in row %}
+    <td>{{element}}<td>
+    {% endfor %}
+    </tr>
+  {% endfor %}
+  </table>
+  <form action="/finishmodel" method="POST">
+    <p>
+	Start input column : <input type="number" name="startInput" required min="0" max="{{model.number_of_columns}}"/><br>
+    End input column : <input type="number" name="endInput" required min="1" max="{{model.number_of_columns}}"/><br>
+    Output column : <input type=number name=output min="0" required max="{{model.number_of_columns}}"><br>
+    Qualitative output : <input type="checkbox" name="qualitative" value="edit"><br>
+    <input type="submit" value="Complete the model"/>
+  </form>
+{% else %}
+  <form action="/newmodel" method="POST" enctype=multipart/form-data>
+    <p>
+	Model name : <input type="text" required autofocus name="name"/><br>
+    Training model : <input type=file required name=training accept=".csv"><br>
+    Testing model  : <input type=file required name=testing accept=".csv"><br>
+    <input type="submit" value="Upload the files"/>
+  </form>
+{% endif %}
+<p>
