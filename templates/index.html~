@@ -49,47 +49,77 @@
       
 	  <h2>Train a new model</h2>
 	  {% if model is not none %}
-	  <h3>{{model}} model</h3>
-	  <h4>First 3 lines of the training file</h4>
-	  <table border="1">
-	  {% for row in model.getSampleTraining(3) %}
-        <tr>
-	    {% for element in row %}
-	    <td>{{element}}<td>
-	    {% endfor %}
-	    </tr>
-	  {% endfor %}
-      </table>
-	  <form action="/finishmodel" method="POST">
-		<p>
- 		Start input column : <input type="number" name="startInput" required min="0" max="{{model.number_of_columns}}"/><br>
-		End input column : <input type="number" name="endInput" required min="1" max="{{model.number_of_columns}}"/><br>
-		Output column : <input type=number name=output min="0" required max="{{model.number_of_columns}}"><br>
-		Qualitative output : <input type="checkbox" name="qualitative" value="edit">
-		<input type="submit" value="Complete the model"/>
-	  </form>
+	      <h3>{{model}} model</h3>
+	      <h4>First 3 lines of the training file</h4>
+	      <table border="1">
+	      {% for row in model.getSampleTraining(3) %}
+            <tr>
+            {% for element in row %}
+            <td>{{element}}<td>
+            {% endfor %}
+            </tr>
+	      {% endfor %}
+          </table>
+	      <form action="/finishmodel" method="POST">
+		    <p>
+     		Start input column : <input type="number" name="startInput" autofocus required min="0" max="{{model.number_of_columns}}"/><br>
+		    End input column : <input type="number" name="endInput" required min="1" max="{{model.number_of_columns}}"/><br>
+		    Output column : <input type=number name=output min="0" required max="{{model.number_of_columns}}"><br>
+		    Qualitative output : <input type="checkbox" name="qualitative" value="edit"><br>
+		    <input type="submit" value="Complete the model"/>
+	      </form>
 	  {% else %}
-	  <form action="/newmodel" method="POST" enctype=multipart/form-data>
-		<p>
- 		Model name : <input type="text" required name="name"/><br>
-		Training model : <input type=file required name=training accept=".csv"><br>
-		Testing model  : <input type=file required name=testing accept=".csv"><br>
-		<input type="submit" value="Upload the files"/>
-	  </form>
+	      <form action="/newmodel" method="POST" enctype=multipart/form-data>
+		    <p>
+     		Model name : <input type="text" required autofocus name="name"/><br>
+		    Training model : <input type=file required name=training accept=".csv"><br>
+		    Testing model  : <input type=file required name=testing accept=".csv"><br>
+		    <input type="submit" value="Upload the files"/>
+	      </form>
 	  {% endif %}
 	  <p>
 
       <h2>Available models</h2>
-			<p>			
-			<form action="/train" method="POST">
-				{% for n in networks if not n.trained%}
-					<input type="radio" name="network" id="{{n}}" 
-						value="{{n}}"> {{n}} </input><br>
-				{% endfor %}
-				<br>
-				<input type="submit" value="Train the network"/>
-			</form>
 			<p>
+			{% if network_in_training is none %}
+			        <form action="/newtraining" method="POST">
+			        <table border="1">
+			            <tr>
+			            <td>Model name</td>
+			            <td>Status</td>
+			            <td>Current accuracy</td>
+			            <td>Epochs for accuracy</td>
+			            <td>Best accuracy</td>
+			            <td>Epochs for best accuracy
+			            </tr>
+				        {% for n in networks %}
+				        <tr>
+				        <td>
+					        <label><input type="radio" name="network" id="{{n}}" required
+						        value="{{n}}"/> {{n}} 
+				            </label>
+				        </td>
+				        <td>{% if n.trained %}Trained{% else %}Not trained{% endif %}</td>
+				        <td>{{n.accuracy * 100}}</td>
+				        <td>{{n.epochs_for_accuracy}}</td>
+				        <td>{{n.best_accuracy * 100}}</td>
+				        <td>{{n.epochs_for_best_accuracy}}</td>
+				        </tr>
+				        {% endfor %}
+			        </table>
+				        <input type="submit" value="Select the network"/>
+			        </form>
+			        <p>
+			{% else %}
+			    <form action="/finishtraining" method="POST">
+				    <label><input type="radio" name="method" checked id="gradient_descent" required value="gradient_descent"/> Gradient Descent Optimization 
+			        </label><br>
+			        Number of epochs <input type="number" required name="epochs"><br>
+			        <input type="checkbox" name="100" value="100" checked>Stop if 100% accuracy is reached when testing<br>
+				    <input type="submit" value="Train the network"/>
+			    </form>
+			    <p>
+			{% endif %}
 			{% for n in networks if not n.in_training %}
 			{% else %}
 			    <h2>Model(s) in training</h2>
@@ -98,30 +128,31 @@
 			{% for n in networks if n.in_training %}
 				<h3>{{n}}</h3><br>
 			{% endfor %}
-			<br>
-			<h2>Trained models</h2>
-			<p>
-			{% for n in networks if n.trained %}
-				<h4>{{n}} </h4>
-				<form action="/output/{{n}}" method="POST">
-				{% for input in range(n.number_of_inputs)%}
-					<input type="number" placeholder="Input {{input}}" name="{{input}}">
-					<br>
-				{% endfor %}
-				<input type="submit" value="Get the output"/>
-				</form>
-				{% if result is not none and result.network == n %}
-					<p> 
-					The output of {{result.inputs}} is 
-					{% if result.outputs|length == 1 %}
-						{{result.outputs[0]}}
-					{% else %}
-						{{result.outputs}}
-					{% endif %}
-				{% endif %}
-			{% else %}
-				None available
-			{% endfor %}
+		<br>
+			
+	    <h2>Trained models</h2>
+	    <p>
+	    {% for n in networks if n.trained %}
+		    <h4>{{n}} </h4>
+		    <form action="/output/{{n}}" method="POST">
+		    {% for input in range(n.number_of_columns - 1)%}
+			    <input type="number" placeholder="Input {{input}}" name="{{input}}">
+			    <br>
+		    {% endfor %}
+		    <input type="submit" value="Get the output"/>
+		    </form>
+		    {% if result is not none and result.network == n %}
+			    <p> 
+			    The output of {{result.inputs}} is 
+			    {% if result.outputs|length == 1 %}
+				    {{result.outputs[0]}}
+			    {% else %}
+				    {{result.outputs}}
+			    {% endif %}
+		    {% endif %}
+	    {% else %}
+		    None available
+	    {% endfor %}
     </div> <!-- /container -->
 
     <!-- Le javascript

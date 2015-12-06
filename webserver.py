@@ -11,11 +11,12 @@ UPLOAD_FOLDER = 'upload'
 
 networks = network.networks_available()
 new_model = None
+network_in_training = None
 result = None
 app = Flask(__name__)
 app.secret_key = "f29jfd9fj903-0ld"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.debug = DEBUG
+#app.debug = DEBUG
 
 def debug(s):
     if DEBUG:
@@ -26,26 +27,45 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 def train_and_redirect(network):
+    debug("Training network")
     network.train()
-    redirect('/')
+    return redirect('/')
         
 @app.route('/', methods=['GET','POST'])
 def main_page():
     debug('In main_page method')
-    return render_template('index.html', networks=networks, result=result, model=new_model)
+    return render_template('index.html', networks=networks, result=result, model=new_model, network_in_training=network_in_training)
     
-@app.route('/train', methods=['POST'])
+@app.route('/newtraining', methods=['POST'])
 def train():
-    debug('In train method')
+    debug('In new training method')
     if request.method == 'POST':
         n = network.get_network(networks, request.form['network'])
-        if not n.trained:
-            debug('Training' + n.name + 'network')
-            train_and_redirect(n)
-            t = threading.Thread(target=train_and_redirect, args=(n,))
-            t.start()
+        if n == None:
+            debug("Error, can't find the network")
+            return
+        debug("Setting network in training")
+        print(n)
+        global network_in_training
+        network_in_training = n
     return redirect('/')
-
+    
+@app.route('/finishtraining', methods=['POST'])
+def finishTraining():
+    debug('In finish training method')
+    if request.method == 'POST':
+        method = request.form['method']
+        number_of_epochs = int(request.form['epochs'])
+        stop_at_100_accuracy = request.form.getlist('100') 
+        
+        global network_in_training
+        network_in_training.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+        #todo : update progress
+        #t = threading.Thread(target=train_and_redirect, args=(network_in_training,))
+        #t.start()
+        network_in_training = None
+    return redirect('/')
+    
 @app.route('/newmodel', methods=['POST'])
 def upload():
     debug('Uploading files')
@@ -83,9 +103,7 @@ def finishModel():
         startInput = int(request.form['startInput'])
         endInput = int(request.form['endInput'])
         output = int(request.form['output'])
-        print("Before qualitative")
         qualitative = checked = 'qualitative' in request.form
-        print("Qualitative = " + str(qualitative))
         global new_model
         if startInput < 0 or endInput <= startInput:
             #todo : display error
@@ -102,7 +120,8 @@ def finishModel():
         new_model.input_start_column = startInput
         new_model.input_end_column = endInput
         new_model.output_column = output
-        new_model.qualitative = qualitative
+        new_model.qualitative_outputs = qualitative
+        new_model.saveModel()
         debug("Model completed")
         networks.append(deepcopy(new_model))
         new_model = None
@@ -124,5 +143,5 @@ def output(path):
     return redirect('/')
 
 if __name__ == "__main__":
-    app.run()
-    session.clear()
+    app.run(use_reloader=False)
+    #session.clear()
