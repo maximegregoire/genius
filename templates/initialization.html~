@@ -1,4 +1,8 @@
 <h2>Initialize a new model</h2>
+{% if error_initialization is not none %}
+<font color="red">{{error_initialization}}</font>
+{% endif %}
+
 {% if model is not none %}
   <h3>{{model}} model</h3>
   <h4>First 3 lines of the training file</h4>
@@ -22,7 +26,7 @@
 {% else %}
   <form action="/newmodel" method="POST" enctype=multipart/form-data>
     <p>
-	Model name : <input type="text" required autofocus name="name"/><br>
+	Model name : <input type="text" required name="name"/><br>
     Training model : <input type=file required name=training accept=".csv"><br>
     Testing model  : <input type=file required name=testing accept=".csv"><br>
     <input type="submit" value="Upload the files"/>

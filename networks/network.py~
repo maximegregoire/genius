@@ -71,9 +71,17 @@ class Network:
         outputs, outputs_onehot = parsing.convertOneHot(data, self.output_column)
         return (outputs, outputs_onehot)
         
+    def getRelativePath(self):
+        return 'networks/models/' + self.name + '.pik'
+        
     def saveModel(self):
-        with open('networks/models/' + self.name + '.pik', "wb") as f:
+        with open(self.getRelativePath(), "wb") as f:
             dill.dump(self, f)
+            
+    def deleteModel(self):
+        if not os.path.isfile(self.getRelativePath())
+            raise ValueError("The model file is not present")
+        os.remove(self.getRelativePath())
             
     def initialize(self):
         training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)        
