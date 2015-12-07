@@ -13,6 +13,7 @@ networks = network.networks_available()
 new_model = None
 result = None
 error_initialization = None
+error_training = None
 app = Flask(__name__)
 app.secret_key = "f29jfd9fj903-0ld"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -35,7 +36,7 @@ def allowedName(name):
 @app.route('/', methods=['GET','POST'])
 def main_page():
     debug('In main_page method')
-    return render_template('index.html', networks=networks, result=result, model=new_model, error_initialization=error_initialization)
+    return render_template('index.html', networks=networks, result=result, model=new_model, error_initialization=error_initialization, error_training=error_training)
     
 @app.route('/train', methods=['POST'])
 def modelSubmission():
@@ -52,10 +53,9 @@ def modelSubmission():
             method = request.form['method']
             number_of_epochs = int(request.form['epochs'])
             stop_at_100_accuracy = request.form.getlist('100')
-            if not n.initialized:
-                n.initialize()
-                n.initialized = True
-            n.train(number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+            if not n.initialized or method != n.method_initialized:
+                n.initialize(method)
+            n.train(method, number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
              
             #todo : update progress
             #t = threading.Thread(target=train_and_redirect, args=(n,))
@@ -66,6 +66,7 @@ def modelSubmission():
             n.accuracy = 0
             n.epochs_for_best_accuracy = 0
             n.epochs_for_accuracy = 0
+            n.method_initialized = None
             n.trained = False
         elif request.form['btn'] == 'Delete':
             n.deleteModel()
@@ -80,29 +81,47 @@ def upload():
         trainingFile = request.files['training']
         testingFile = request.files['testing']
         name = request.form['name']
+        separate = request.form.getlist('separatetraining')
+        delimiter = request.form['delimiters']
         global error_initialization
         if not name or not allowedName(name):
             message = "Error: the name of the network must be different than the others"
             debug(message)
             error_initialization = message
             return redirect('/')
-        if not trainingFile or not testingFile:
-            message = "Error: the training and testing files must be attached"
+        if not trainingFile:
+            message = "Error: the training file must be attached"
             debug(message)
             error_initialization = message
             return redirect('/')
-        if not allowed_file(trainingFile.filename) or not allowed_file(testingFile.filename):
-            message = "Error: the training and testing files must have the " + str(ALLOWED_EXTENSIONS) + " format"
+        if not testingFile and separate:
+            message = "Error: the testing file must be attached"
+            debug(message)
+            error_initialization = message
+            return redirect('/')            
+        if not allowed_file(trainingFile.filename):
+            message = "Error: the training file must have the " + str(ALLOWED_EXTENSIONS) + " format"
             debug(message)
             error_initialization = message
             return redirect('/')
+        if not allowed_file(testingFile.filename) and separate:
+            message = "Error: the testing file must have the " + str(ALLOWED_EXTENSIONS) + " format"
+            debug(message)
+            error_initialization = message
+            return redirect('/')
+            
         trainingFilename = secure_filename(trainingFile.filename)
         testingFilename = secure_filename(testingFile.filename)
         trainingFile.save(os.path.join(app.config['UPLOAD_FOLDER'], trainingFilename))
-        testingFile.save(os.path.join(app.config['UPLOAD_FOLDER'], testingFilename))
         global new_model
-        new_model = network.Network(name, UPLOAD_FOLDER + '/' + trainingFilename, UPLOAD_FOLDER + '/' + testingFilename)
+        if separate:
+            testingFile.save(os.path.join(app.config['UPLOAD_FOLDER'], testingFilename))
+            new_model = network.Network(name, UPLOAD_FOLDER + '/' + trainingFilename, testing_path = UPLOAD_FOLDER + '/' + testingFilename)
+        else:
+            new_model = network.Network(name, UPLOAD_FOLDER + '/' + trainingFilename, None)
         debug("Model created : " + str(new_model))
+        new_model.delimitation = delimiter
+        new_model.separate = separate        
         error_initialization = None
         return redirect('/')
     return redirect('/')
@@ -115,9 +134,11 @@ def finishModel():
         startInput = int(request.form['startInput'])
         endInput = int(request.form['endInput'])
         output = int(request.form['output'])
-        qualitative = checked = 'qualitative' in request.form
+        qualitative = 'qualitative' in request.form
         global error_initialization
         global new_model
+        if new_model.testing_path == None:
+            new_model.number_of_tests = int(request.form['testing'])
         if startInput < 0 or endInput <= startInput:
             message = "Error: the input columns are not valid"
             debug(message)
@@ -137,6 +158,7 @@ def finishModel():
         new_model.input_end_column = endInput
         new_model.output_column = output
         new_model.qualitative_outputs = qualitative
+        new_model.extractData()
         new_model.saveModel()
         debug("Model completed")
         networks.append(deepcopy(new_model))

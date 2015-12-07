@@ -7,10 +7,12 @@ import numpy as np
 # 2 = [1, 0, 0]
 # Returns : First column (as np.array)
 # Returns : First column with one-hot encoding
-def convertOneHot(data, column = 0):
+def convertOneHot(data, column, max_value = None):
     y=np.array([int(i[column]) for i in data])
     y_onehot=[0]*len(y)
+    if (max_value == None):
+        max_value == y.max()
     for i,j in enumerate(y):
-        y_onehot[i]=[0]*(y.max() + 1)
+        y_onehot[i]=[0]*(max_value + 1)
         y_onehot[i][j]=1
     return (y,y_onehot)

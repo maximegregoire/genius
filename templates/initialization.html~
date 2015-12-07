@@ -1,6 +1,6 @@
 <h2>Initialize a new model</h2>
 {% if error_initialization is not none %}
-<font color="red">{{error_initialization}}</font>
+<font color="red">{{error_initialization}}</font><br>
 {% endif %}
 
 {% if model is not none %}
@@ -17,7 +17,10 @@
   </table>
   <form action="/finishmodel" method="POST">
     <p>
-	Start input column : <input type="number" name="startInput" required min="0" max="{{model.number_of_columns}}"/><br>
+    {% if not model.separate %}
+        Quantity of testing items : <input type="number" name="testing" required autofocus min="1"/><br>
+    {% endif %}
+	Start input column : <input type="number" name="startInput" required autofocus min="0" max="{{model.number_of_columns}}"/><br>
     End input column : <input type="number" name="endInput" required min="1" max="{{model.number_of_columns}}"/><br>
     Output column : <input type=number name=output min="0" required max="{{model.number_of_columns}}"><br>
     Qualitative output : <input type="checkbox" name="qualitative" value="edit"><br>
@@ -28,7 +31,15 @@
     <p>
 	Model name : <input type="text" required name="name"/><br>
     Training model : <input type=file required name=training accept=".csv"><br>
-    Testing model  : <input type=file required name=testing accept=".csv"><br>
+    Testing model  : <input type=file id=testing name=testing accept=".csv"><br>
+    <label>
+    Separate testing model 
+    <input type="checkbox" id="separatetraining" checked name="separatetraining"/>
+    </label><br>
+    Delimiter : <select id="delimiters" name="delimiters">       
+        <option value=",">Coma (,)</option>       
+        <option value=";">Semicolon (;)</option>
+    </select><br>
     <input type="submit" value="Upload the files"/>
   </form>
 {% endif %}

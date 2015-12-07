@@ -5,6 +5,7 @@ import os.path
 import numpy as np
 import tensorflow as tf
 import dill
+import random
 
 class Result:
     def __init__(self, network, inputs, outputs):
@@ -19,7 +20,6 @@ class Network:
         self.name = name
         self.training_path = training_path
         self.testing_path = testing_path
-
         self.training_function = None
         self.output_function = None
         self.trained = False
@@ -28,21 +28,22 @@ class Network:
         self.input_end_column = 0
         self.output_column = 0
         self.number_of_columns = 0
+        
         self.qualitative_outputs = False
+        self.max_qualitative_output = 0
+        
         self.accuracy = 0
         self.best_accuracy = 0
         self.epochs_for_best_accuracy = 0
         self.epochs_for_accuracy = 0
+        self.number_of_tests = 0
         
         self.sess = None
         self.initialized = False
-        self.summary_writer = None
         self.tf_train_step = None
         self.tf_accuracy = None
-        self.summary_op = None
         self.tf_in = None
         self.tf_softmax_correct = None
-        
         
         # CSV, separated by a coma
         self.delimitation = ','
@@ -56,20 +57,41 @@ class Network:
     def getSampleTraining(self, number_of_lines):
         if not os.path.isfile(self.training_path):
             raise ValueError("Cannot find the training file : " + self.training_path)
-        training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)
-        self.number_of_columns = len(training_data[0])
-        return training_data[0:number_of_lines]
+        self.training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)
+        self.number_of_columns = len(self.training_data[0])
+        return self.training_data[0:number_of_lines]
+        
+    def getMaxOutput(self, data):
+        return np.array([int(i[self.output_column]) for i in data]).max()        
         
     def getInputs(self, data):
         if data == None:
             raise ValueError("The data has not been loaded")
-        self.inputs = np.array([i[input_start_column:input_end_column + 1] for i in data])
+        self.inputs = np.array([i[self.input_start_column:self.input_end_column + 1] for i in data])
         
-    def getQualitativeOutputs(self, data):
+    def getQualitativeOutputs(self, data, max_output):
         if data == None:
             raise ValueError("The data has not been loaded")
-        outputs, outputs_onehot = parsing.convertOneHot(data, self.output_column)
+        outputs, outputs_onehot = parsing.convertOneHot(data, self.output_column, max_output)
         return (outputs, outputs_onehot)
+        
+    def extractData(self):
+        if self.qualitative_outputs:
+            if self.testing_path == None:
+                full_training = np.genfromtxt(self.training_path, delimiter=self.delimitation)
+                full_size = len(full_training)
+                random.shuffle(full_training)
+                
+                self.training_data = full_training[:full_size-self.number_of_tests]
+                self.testing_data = full_training[full_size-self.number_of_tests:]
+            else:
+                self.training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)
+                self.testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
+                
+            max_output = max(self.getMaxOutput(self.training_data), self.getMaxOutput(self.testing_data))
+            print "max output = ", max_output
+            self.training_outputs, self.training_outputs_onehot = self.getQualitativeOutputs(self.training_data, max_output)
+            self.testing_outputs, self.testing_outputs_onehot = self.getQualitativeOutputs(self.testing_data, max_output)
         
     def getRelativePath(self):
         return 'networks/models/' + self.name + '.pik'
@@ -79,46 +101,78 @@ class Network:
             dill.dump(self, f)
             
     def deleteModel(self):
-        if not os.path.isfile(self.getRelativePath())
+        if not os.path.isfile(self.getRelativePath()):
             raise ValueError("The model file is not present")
         os.remove(self.getRelativePath())
             
-    def initialize(self):
-        training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)        
-        testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
-        
+    def initialize(self, method):
+        self.accuracy = 0
+        self.best_accuracy = 0
+        self.epochs_for_accuracy = 0
+        self.epochs_for_best_accuracy = 0
+        if method == "Gradient descent":
+            self.initializeGradient()
+            self.method_initialized = method
+            self.initialized = True
+        elif method == "K-nearest neighbors":
+            self.initializeKnn()
+            self.method_initialized = method
+            self.initialized = True
+        else:
+            #todo: error in training
+            raise ValueError("Training method not recognized")
+    
+    def initializeKnn(self):        
+        if self.qualitative_outputs:            
+            self.tf_in = tf.placeholder("float", [None, self.number_of_columns])
+            self.tf_testing = tf.placeholder("float", [self.number_of_columns])
+            
+            # Calculate L1 Distance
+            self.distance = tf.reduce_sum(tf.abs(tf.add(self.tf_in, tf.neg(self.tf_testing))), reduction_indices=1)
+            # Predict: Get min distance index (Nearest neighbor)
+            self.prediction = tf.arg_min(self.distance, 0)
+            
+            init = tf.initialize_all_variables()
+            self.sess = tf.Session()
+            self.sess.run(init)
+            accuracy = 0
+            #output part
+            for i in range(len(self.testing_data)):
+                # Get nearest neighbor
+                nn_index = self.sess.run(self.prediction, feed_dict={self.tf_in: self.training_data, self.tf_testing: self.testing_data[i,:]})
+                # Calculate accuracy
+                if np.argmax(self.training_outputs_onehot[nn_index]) == np.argmax(self.testing_outputs_onehot[i]):
+                    accuracy += 1./len(self.testing_data)
+            self.accuracy = accuracy
+            self.epochs_for_accuracy = 1
+            self.best_accuracy = accuracy
+            self.epochs_for_best_accuracy = 1
+            self.trained = True
+        else:
+            raise ValueError("NOT IMPLEMENTED")
+    
+    def initializeGradient(self):        
         if self.qualitative_outputs:
-            training_outputs, training_outputs_onehot = self.getQualitativeOutputs(training_data)
-            testing_outputs, testing_outputs_onehot = self.getQualitativeOutputs(testing_data)
-            number_of_outputs = len(testing_outputs_onehot[0])
+            number_of_outputs = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0])) 
             # the placeholder for the inputs
             self.tf_in = tf.placeholder("float", [None, self.number_of_columns], name="The_raw_data")
 
             # the placeholder for the outputs
             self.tf_softmax_correct = tf.placeholder("float", [None, number_of_outputs], name="The_correct_data")
 
-            tf_weight = tf.Variable(tf.zeros([self.number_of_columns, number_of_outputs]))
-            tf_bias = tf.Variable(tf.zeros([number_of_outputs]))
-            tf_softmax = tf.nn.softmax(tf.matmul(self.tf_in,tf_weight) + tf_bias)
+            self.tf_weight = tf.Variable(tf.zeros([self.number_of_columns, number_of_outputs]))
+            self.tf_bias = tf.Variable(tf.zeros([number_of_outputs]))
+            self.tf_softmax = tf.nn.softmax(tf.matmul(self.tf_in,self.tf_weight) + self.tf_bias)
 
             # Training via backpropagation
-            tf_cross_entropy = -tf.reduce_sum(self.tf_softmax_correct*tf.log(tf_softmax))
+            self.tf_cross_entropy = -tf.reduce_sum(self.tf_softmax_correct*tf.log(self.tf_softmax))
 
             # Train using tf.train.GradientDescentOptimizer
-            self.tf_train_step = tf.train.GradientDescentOptimizer(0.01).minimize(tf_cross_entropy)
+            self.tf_train_step = tf.train.GradientDescentOptimizer(0.01).minimize(self.tf_cross_entropy)
 
             # Add accuracy checking nodes
-            tf_correct_prediction = tf.equal(tf.argmax(tf_softmax,1), tf.argmax(self.tf_softmax_correct,1))
-            self.tf_accuracy = tf.reduce_mean(tf.cast(tf_correct_prediction, "float"))
-            
-            # Recreate logging dir
-            import shutil, os, sys
-            TMPDir='./tenIrisSave'
-            try:
-             shutil.rmtree(TMPDir)
-            except:
-             print "Tmp Dir did not exist"
-            os.mkdir(TMPDir, 0755 )
+            self.tf_correct_prediction = tf.equal(tf.argmax(self.tf_softmax,1), tf.argmax(self.tf_softmax_correct,1))
+            self.tf_accuracy = tf.reduce_mean(tf.cast(self.tf_correct_prediction, "float"))
             
             # Initialize and run
             tf.Session().close()
@@ -127,45 +181,37 @@ class Network:
             init = tf.initialize_all_variables()
             self.sess.run(init)
 
-            # Build the summary operation based on the TF collection of Summaries.
-            tf.train.write_graph(self.sess.graph_def, TMPDir + '/logsd','graph.pbtxt')
-            
-            tf.scalar_summary("Accuracy:", self.tf_accuracy)
-            tf.histogram_summary('weights', tf_weight)
-            tf.histogram_summary('bias', tf_bias)
-            tf.histogram_summary('softmax', tf_softmax)
-            tf.histogram_summary('accuracy', self.tf_accuracy)
-            
-            self.summary_op = tf.merge_all_summaries()
-            self.summary_writer = tf.train.SummaryWriter(TMPDir + '/logs',self.sess.graph_def)
-
             # This is for saving all our work
-            saver = tf.train.Saver([tf_weight,tf_bias])
+            saver = tf.train.Saver([self.tf_weight,self.tf_bias])
         else:
             raise ValueError("NOT IMPLEMENTED")
+    
+    def train(self, method, number_of_epochs, stop_at_100_accuracy):
+        if method != self.method_initialized:
+            raise ValueError("The current training method does not match the initialization method")
+        print("Method = "+ method)
+        if method == "Gradient descent":
+            self.trainGradient(number_of_epochs, stop_at_100_accuracy)
+        elif method == "K-nearest neighbors":
+            # No training to do, as KNN is not training-based
+            return
+        else:
+            #todo: error in training
+            raise ValueError("Training method not recognized")
         
-    def train(self, number_of_epochs, stop_at_100_accuracy):
-        training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)        
-        testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
-        
+    def trainGradient(self, number_of_epochs, stop_at_100_accuracy):
         if self.qualitative_outputs:
-            training_outputs, training_outputs_onehot = self.getQualitativeOutputs(training_data)
-            testing_outputs, testing_outputs_onehot = self.getQualitativeOutputs(testing_data)
-            number_of_outputs = len(testing_outputs_onehot[0])
-
             # Run the training
 
             k=[]
             saved=0
             result=0
             for i in range(number_of_epochs):
-                self.sess.run(self.tf_train_step, feed_dict={self.tf_in: training_data, self.tf_softmax_correct: training_outputs_onehot})
+                self.sess.run(self.tf_train_step, feed_dict={self.tf_in: self.training_data, self.tf_softmax_correct: self.training_outputs_onehot})
                 # Print accuracy
-                result = self.sess.run(self.tf_accuracy, feed_dict={self.tf_in: testing_data, self.tf_softmax_correct: testing_outputs_onehot})
+                result = self.sess.run(self.tf_accuracy, feed_dict={self.tf_in: self.testing_data, self.tf_softmax_correct: self.testing_outputs_onehot})
                 print "Run {},{}".format(i,result)
                 k.append(result)
-                #summary_str = self.sess.run(self.summary_op,feed_dict={self.tf_in: testing_data, self.tf_softmax_correct: testing_outputs_onehot})
-                #self.summary_writer.add_summary(summary_str, i)
                 self.epochs_for_accuracy += 1
                 if result >= self.best_accuracy:
                     self.best_accuracy = result

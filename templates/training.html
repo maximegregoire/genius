@@ -1,4 +1,9 @@
 <h2>Train a model</h2>
+
+{% if error_training is not none %}
+<font color="red">{{error_training}}</font><br>
+{% endif %}
+
 		<p>
 		    <form action="/train" method="POST">
 		    <div style="overflow-x:auto;">
@@ -19,10 +24,10 @@
 					        value="{{n}}"/> {{n}} 
 			            </label>
 			        </td>
-			        <td>{% if n.trained %}Trained{% else %}Not trained{% endif %}</td>
+			        <td>{% if n.trained %}Trained with {{n.method_initialized}}{% else %}Not trained{% endif %}</td>
 			        <td>{{n.accuracy * 100}}</td>
 			        <td>{{n.epochs_for_accuracy}}</td>
-			        <td>{{n.best_accuracy * 100}}</td>
+			        <td>{% if n.best_accuracy != "N/A" %}{{n.best_accuracy * 100}}{%else%}N/A{%endif%}</td>
 			        <td>{{n.epochs_for_best_accuracy}}</td>
 			        </tr>
 			        {% endfor %}
@@ -31,7 +36,11 @@
 		        <br>
 			    <label>
 			        <img src="{{ url_for('static',filename='img/gradient_descent.png')}}" height="100" width="100"/>
-			        <input type="radio" name="method" checked id="gradient_descent" required value="gradient_descent"/> Gradient Descent Optimization 
+			        <input type="radio" name="method" checked id="Gradient descent" required value="Gradient descent"/> Gradient Descent Optimization 
+		        </label><br>
+		        <label>
+			        <img src="{{ url_for('static',filename='img/knn.png')}}" height="100" width="100"/>
+			        <input type="radio" name="method" id="K-nearest neighbors" required value="K-nearest neighbors"/> K-nearest neighbors
 		        </label><br>
 		        Number of epochs <input type="number" value="10" required name="epochs"><br>
 		        <input type="checkbox" name="100" value="100" checked>Stop if 100% accuracy is reached when testing<br>
