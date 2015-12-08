@@ -5,6 +5,24 @@ import os
 from networks import network
 from werkzeug import secure_filename
 
+NETWORKS_CHARACTERISTICS = [["Logistic regression", "img/logistic.png", 66, 100,
+                                [
+                                 ["epochs", "number", "Number of epochs"],
+                                 ["100", "checkbox", "Stop when 100% accuracy is reached"]
+                                ],
+                            ],
+                            ["K-nearest neighbors", "img/knn.png", 100, 100,
+                                [
+                                 ["kvalue", "number", "Value of K"],
+                                ]
+                            ],
+                            ["Multilayer perceptron", "img/multilayer.png", 66, 100,
+                                [
+                                 ["learning", "number", "Learning rate"],
+                                ]
+                            ]
+                           ]
+
 DEBUG = True
 ALLOWED_EXTENSIONS = set(['csv'])
 UPLOAD_FOLDER = 'upload'
@@ -41,7 +59,7 @@ def allowedName(name):
 @app.route('/', methods=['GET','POST'])
 def main_page():
     debug('In main_page method')
-    return render_template('index.html', networks=networks, result=result, model=new_model, error_initialization=error_initialization, error_training=error_training, summary_initialization = summary_initialization, summary_training = summary_training, summary_output = summary_output)
+    return render_template('index.html', networks=networks, networks_characteristics=NETWORKS_CHARACTERISTICS, result=result, model=new_model, error_initialization=error_initialization, error_training=error_training, summary_initialization = summary_initialization, summary_training = summary_training, summary_output = summary_output)
     
 @app.route('/train', methods=['POST'])
 def modelSubmission():
@@ -56,11 +74,14 @@ def modelSubmission():
         if request.form['btn'] == 'Train':
             debug("Training network")
             method = request.form['method']
-            number_of_epochs = int(request.form['epochs'])
+            number_of_epochs_logistic = int(request.form['epochsLogistic'])
+            number_of_epochs_multilayer = int(request.form['epochsMultilayer'])
+            k = int(request.form['k'])
+            learning_rate = float(request.form['learning'])
             stop_at_100_accuracy = request.form.getlist('100')
             if not n.initialized or method != n.method_initialized:
-                n.initialize(method)
-            n.train(method, number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
+                n.initialize(method, learning_rate)
+            n.train(method, number_of_epochs_logistic, number_of_epochs_multilayer, stop_at_100_accuracy=stop_at_100_accuracy)
              
             #todo : update progress
             #t = threading.Thread(target=train_and_redirect, args=(n,))

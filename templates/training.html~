@@ -32,15 +32,48 @@
 		        </table>
 		        </div>
 		        <br>
-			    <label>
-			        <img src="{{ url_for('static',filename='img/logistic.png')}}" height="66" width="100"/>
-			        <input type="radio" name="method" checked id="Logistic regression" required value="Logistic regression"/> Logistic regression 
-		        </label><br>
-		        <label>
-			        <img src="{{ url_for('static',filename='img/knn.png')}}" height="100" width="100"/>
-			        <input type="radio" name="method" id="K-nearest neighbors" required value="K-nearest neighbors"/> K-nearest neighbors
-		        </label><br>
-		        Number of epochs <input type="number" value="10" required name="epochs"><br>
+		        <!--{% for c in networks_characteristics %}
+		            <label>
+			            <img src="{{ url_for('static',filename=c[1])}}" height="{{c[2]}}" width="{{c[3]}}"/>
+			            <input type="radio" name="method" {% if loop.index0==0 %}checked{% endif %} id="{{c[0]}}" required value="{{c[0]}}"/> {{c[0]}} 
+		            </label><br>
+		        {% endfor %}-->
+		        <table border="1">
+		            <tr>
+		                <td>
+			                <label>
+			                    <img src="{{ url_for('static',filename='img/logistic.png')}}" height="66" width="100"/>
+			                    <input type="radio" name="method" checked id="Logistic regression" required value="Logistic regression"/> Logistic regression 
+		                    </label>
+		                </td>
+		                <td>
+		                    Number of epochs <input type="number" value="10" required name="epochsLogistic"><br>
+		                </td>
+		            </tr>
+		            <tr>
+		                <td>
+		                    <label>
+			                    <img src="{{ url_for('static',filename='img/knn.png')}}" height="100" width="100"/>
+			                    <input type="radio" name="method" id="K-nearest neighbors" required value="K-nearest neighbors"/> K-nearest neighbors
+		                    </label>
+		                </td>
+		                <td>
+		                    Value of K <input type="number" value="1" required name="k">
+		                </td>
+		            </tr>
+		            <tr>
+		                <td>
+		                    <label>
+			                    <img src="{{ url_for('static',filename='img/multilayer.png')}}" height="66" width="100"/>
+			                    <input type="radio" name="method" id="Multilayer perceptron" required value="Multilayer perceptron"/> Multilayer perceptron
+		                    </label>
+		                </td>
+		                <td>
+		                    Learning rate <input type="number" step="0.0001" value="0.001" required name="learning"><br>
+		                    Number of epochs <input type="number" value="10" required name="epochsMultilayer"><br>
+		                </td>
+		            </tr>
+		        </table><br>
 		        <input type="checkbox" name="100" value="100" checked>Stop if 100% accuracy is reached when testing<br>
 			    <input type="submit" name="btn" value="Train"/>
 			    <input type="submit" name="btn" value="Reset"/>

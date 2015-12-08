@@ -45,6 +45,8 @@ class Network:
         self.tf_in = None
         self.tf_softmax_correct = None
         
+        self._index_in_epoch = 0
+        
         # CSV, separated by a coma
         self.delimitation = ','
             
@@ -105,7 +107,7 @@ class Network:
             raise ValueError("The model file is not present")
         os.remove(self.getRelativePath())
             
-    def initialize(self, method):
+    def initialize(self, method, learning_rate):
         self.accuracy = 0
         self.best_accuracy = 0
         self.epochs_for_accuracy = 0
@@ -118,9 +120,57 @@ class Network:
             self.initializeKnn()
             self.method_initialized = method
             self.initialized = True
+        elif method == "Multilayer perceptron":
+            self.initializeMultilayer(learning_rate)
+            self.method_initialized = method
+            self.initialized = True
         else:
             #todo: error in training
             raise ValueError("Training method not recognized")
+    
+    def initializeMultilayer(self, learning_rate):
+        if self.qualitative_outputs:
+            # Network Parameters
+            n_hidden_1 = 256 # 1st layer num features
+            n_hidden_2 = 256 # 2nd layer num features
+            n_input = self.number_of_columns
+            n_classes = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0]))
+
+            # tf Graph input
+            self.x = tf.placeholder("float", [None, n_input])
+            self.y = tf.placeholder("float", [None, n_classes])
+
+            # Create model
+            def multilayer_perceptron(_X, _weights, _biases):
+                layer_1 = tf.nn.relu(tf.add(tf.matmul(_X, _weights['h1']), _biases['b1'])) #Hidden layer with RELU activation
+                layer_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, _weights['h2']), _biases['b2'])) #Hidden layer with RELU activation
+                return tf.matmul(layer_2, _weights['out']) + _biases['out']
+
+            # Store layers weight & bias
+            weights = {
+                'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1])),
+                'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2])),
+                'out': tf.Variable(tf.random_normal([n_hidden_2, n_classes]))
+            }
+            biases = {
+                'b1': tf.Variable(tf.random_normal([n_hidden_1])),
+                'b2': tf.Variable(tf.random_normal([n_hidden_2])),
+                'out': tf.Variable(tf.random_normal([n_classes]))
+            }
+
+            # Construct model
+            self.pred = multilayer_perceptron(self.x, weights, biases)
+
+            # Define loss and optimizer
+            self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.pred, self.y)) # Softmax loss
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.cost) # Adam Optimizer
+
+            # Initializing the variables
+            init = tf.initialize_all_variables()
+
+            # Launch the graph
+            self.sess = tf.Session()
+            self.sess.run(init)
     
     def initializeKnn(self):        
         if self.qualitative_outputs:            
@@ -186,18 +236,45 @@ class Network:
         else:
             raise ValueError("NOT IMPLEMENTED")
     
-    def train(self, method, number_of_epochs, stop_at_100_accuracy):
+    def train(self, method, number_of_epochs_logistic, number_of_epochs_multilayer, stop_at_100_accuracy):
         if method != self.method_initialized:
             raise ValueError("The current training method does not match the initialization method")
         print("Method = "+ method)
         if method == "Logistic regression":
-            self.trainLogistic(number_of_epochs, stop_at_100_accuracy)
+            self.trainLogistic(number_of_epochs_logistic, stop_at_100_accuracy)
         elif method == "K-nearest neighbors":
             # No training to do, as KNN is not training-based
             return
+        elif method == "Multilayer perceptron":
+            self.trainMultilayer(number_of_epochs_multilayer, stop_at_100_accuracy)
         else:
             #todo: error in training
             raise ValueError("Training method not recognized")
+            
+    
+    def trainMultilayer(self, number_of_epochs, stop_at_100_accuracy):
+        display_step = 1
+        accuracy = 0
+        for epoch in range(number_of_epochs):
+            avg_cost = 0.
+            # Fit training using batch data
+            self.sess.run(self.optimizer, feed_dict={self.x: self.training_data, self.y: self.training_outputs_onehot})
+            # Compute average loss
+            avg_cost += self.sess.run(self.cost, feed_dict={self.x: self.training_data, self.y: self.training_outputs_onehot})/len(self.training_data)                
+            # Test model
+            correct_prediction = tf.equal(tf.argmax(self.pred, 1), tf.argmax(self.y, 1))
+            # Calculate accuracy
+            tf_accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+            accuracy = tf_accuracy.eval({self.x: self.testing_data, self.y: self.testing_outputs_onehot}, session=self.sess)
+            self.epochs_for_accuracy += 1
+            if accuracy > self.best_accuracy:
+                self.best_accuracy = accuracy
+                self.epochs_for_best_accuracy = self.epochs_for_accuracy
+            if stop_at_100_accuracy and accuracy == 1:
+                break
+        self.accuracy = accuracy    
+        self.trained = True
+           
         
     def trainLogistic(self, number_of_epochs, stop_at_100_accuracy):
         if self.qualitative_outputs:
@@ -213,7 +290,7 @@ class Network:
                 print "Run {},{}".format(i,result)
                 k.append(result)
                 self.epochs_for_accuracy += 1
-                if result >= self.best_accuracy:
+                if result > self.best_accuracy:
                     self.best_accuracy = result
                     self.epochs_for_best_accuracy = self.epochs_for_accuracy
                 
@@ -224,9 +301,7 @@ class Network:
                     #saver.save(self.sess,"./tenIrisSave/saveOne")
             
             self.accuracy = result
-            self.trained = True
-            print("Network successfuly trained")
-            
+            self.trained = True            
 
         else:
             raise ValueError("NOT IMPLEMENTED YET")
@@ -237,7 +312,7 @@ class Network:
     	if output_function == None:
     		raise ValueError("Output function undefined")
         return Result(self, inputs, self.output_function(inputs))
-        
+    
 def networks_available():
     networks = []
     folder_path = 'networks/models/'
