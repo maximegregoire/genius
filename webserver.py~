@@ -14,6 +14,11 @@ new_model = None
 result = None
 error_initialization = None
 error_training = None
+
+summary_initialization = True
+summary_training = True
+summary_output = False
+
 app = Flask(__name__)
 app.secret_key = "f29jfd9fj903-0ld"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -36,7 +41,7 @@ def allowedName(name):
 @app.route('/', methods=['GET','POST'])
 def main_page():
     debug('In main_page method')
-    return render_template('index.html', networks=networks, result=result, model=new_model, error_initialization=error_initialization, error_training=error_training)
+    return render_template('index.html', networks=networks, result=result, model=new_model, error_initialization=error_initialization, error_training=error_training, summary_initialization = summary_initialization, summary_training = summary_training, summary_output = summary_output)
     
 @app.route('/train', methods=['POST'])
 def modelSubmission():
@@ -55,7 +60,6 @@ def modelSubmission():
             stop_at_100_accuracy = request.form.getlist('100')
             if not n.initialized or method != n.method_initialized:
                 n.initialize(method)
-                n.initialized = True
             n.train(method, number_of_epochs=number_of_epochs, stop_at_100_accuracy=stop_at_100_accuracy)
              
             #todo : update progress
@@ -72,6 +76,11 @@ def modelSubmission():
         elif request.form['btn'] == 'Delete':
             n.deleteModel()
             networks.remove(n)
+                
+        global summary_initialization, summary_training, summary_output 
+        summary_initialization = False
+        summary_training = True
+        summary_output = False
         
     return redirect('/')
     
@@ -124,7 +133,10 @@ def upload():
         new_model.delimitation = delimiter
         new_model.separate = separate        
         error_initialization = None
-        return redirect('/')
+        global summary_initialization, summary_training, summary_output 
+        summary_initialization = True
+        summary_training = False
+        summary_output = False
     return redirect('/')
 
 
@@ -165,6 +177,10 @@ def finishModel():
         networks.append(deepcopy(new_model))
         new_model = None
         error_initialization = None
+        global summary_initialization, summary_training, summary_output 
+        summary_initialization = False
+        summary_training = True
+        summary_output = False
     return redirect('/')
     
 @app.route('/output/<path:path>', methods=['POST'])
@@ -180,6 +196,10 @@ def output(path):
         global result
         result = n.get_output(map(int, inputs))
         
+    global summary_initialization, summary_training, summary_output 
+    summary_initialization = False
+    summary_training = False
+    summary_output = True
     return redirect('/')
 
 if __name__ == "__main__":

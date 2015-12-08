@@ -1,5 +1,3 @@
-<h2>Train a model</h2>
-
 {% if error_training is not none %}
 <font color="red">{{error_training}}</font><br>
 {% endif %}
@@ -35,8 +33,8 @@
 		        </div>
 		        <br>
 			    <label>
-			        <img src="{{ url_for('static',filename='img/gradient_descent.png')}}" height="100" width="100"/>
-			        <input type="radio" name="method" checked id="Gradient descent" required value="Gradient descent"/> Gradient Descent Optimization 
+			        <img src="{{ url_for('static',filename='img/logistic.png')}}" height="66" width="100"/>
+			        <input type="radio" name="method" checked id="Logistic regression" required value="Logistic regression"/> Logistic regression 
 		        </label><br>
 		        <label>
 			        <img src="{{ url_for('static',filename='img/knn.png')}}" height="100" width="100"/>

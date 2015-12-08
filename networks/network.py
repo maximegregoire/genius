@@ -110,8 +110,8 @@ class Network:
         self.best_accuracy = 0
         self.epochs_for_accuracy = 0
         self.epochs_for_best_accuracy = 0
-        if method == "Gradient descent":
-            self.initializeGradient()
+        if method == "Logistic regression":
+            self.initializeLogistic()
             self.method_initialized = method
             self.initialized = True
         elif method == "K-nearest neighbors":
@@ -151,7 +151,7 @@ class Network:
         else:
             raise ValueError("NOT IMPLEMENTED")
     
-    def initializeGradient(self):        
+    def initializeLogistic(self):        
         if self.qualitative_outputs:
             number_of_outputs = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0])) 
             # the placeholder for the inputs
@@ -190,8 +190,8 @@ class Network:
         if method != self.method_initialized:
             raise ValueError("The current training method does not match the initialization method")
         print("Method = "+ method)
-        if method == "Gradient descent":
-            self.trainGradient(number_of_epochs, stop_at_100_accuracy)
+        if method == "Logistic regression":
+            self.trainLogistic(number_of_epochs, stop_at_100_accuracy)
         elif method == "K-nearest neighbors":
             # No training to do, as KNN is not training-based
             return
@@ -199,7 +199,7 @@ class Network:
             #todo: error in training
             raise ValueError("Training method not recognized")
         
-    def trainGradient(self, number_of_epochs, stop_at_100_accuracy):
+    def trainLogistic(self, number_of_epochs, stop_at_100_accuracy):
         if self.qualitative_outputs:
             # Run the training
 

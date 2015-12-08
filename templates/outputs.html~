@@ -1,0 +1,23 @@
+<h2>Compute answers</h2>
+<p>
+{% for n in networks if n.trained %}
+    <h4>{{n}} </h4>
+    <form action="/output/{{n}}" method="POST">
+    {% for input in range(n.number_of_columns - 1)%}
+        <input type="number" placeholder="Input {{input}}" name="{{input}}">
+        <br>
+    {% endfor %}
+    <input type="submit" value="Get the output"/>
+    </form>
+    {% if result is not none and result.network == n %}
+        <p> 
+        The output of {{result.inputs}} is 
+        {% if result.outputs|length == 1 %}
+	        {{result.outputs[0]}}
+        {% else %}
+	        {{result.outputs}}
+        {% endif %}
+    {% endif %}
+{% else %}
+    None available
+{% endfor %}

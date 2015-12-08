@@ -46,9 +46,23 @@
     </div>
 
     <div class="container">
-      {% include "initialization.html" %}
-      {% include "training.html" %}
-      {% include "outputs.html" %}
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='styles/style.css') }}">
+    
+    <details {% if summary_initialization %}open{% endif %}>
+      <summary id="summaryIndex">Initialize a new model</summary>
+      <p>{% include "initialization.html" %}</p>
+    </details>
+      
+    <details {% if summary_training %}open{% endif %}>
+      <summary id="summaryIndex">Train a model</summary>
+      <p>{% include "training.html" %}</p>
+    </details>
+    
+    <details {% if summary_output %}open{% endif %}>
+      <summary id="summaryIndex">Compute answers</summary>
+      <p>{% include "outputs.html" %}</p>
+    </details>
+    
     </div> <!-- /container -->
 
     <!-- Le javascript
