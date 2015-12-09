@@ -91,7 +91,6 @@ class Network:
                 self.testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
                 
             max_output = max(self.getMaxOutput(self.training_data), self.getMaxOutput(self.testing_data))
-            print "max output = ", max_output
             self.training_outputs, self.training_outputs_onehot = self.getQualitativeOutputs(self.training_data, max_output)
             self.testing_outputs, self.testing_outputs_onehot = self.getQualitativeOutputs(self.testing_data, max_output)
         
@@ -239,7 +238,6 @@ class Network:
     def train(self, method, number_of_epochs_logistic, number_of_epochs_multilayer, stop_at_100_accuracy):
         if method != self.method_initialized:
             raise ValueError("The current training method does not match the initialization method")
-        print("Method = "+ method)
         if method == "Logistic regression":
             self.trainLogistic(number_of_epochs_logistic, stop_at_100_accuracy)
         elif method == "K-nearest neighbors":
@@ -287,7 +285,6 @@ class Network:
                 self.sess.run(self.tf_train_step, feed_dict={self.tf_in: self.training_data, self.tf_softmax_correct: self.training_outputs_onehot})
                 # Print accuracy
                 result = self.sess.run(self.tf_accuracy, feed_dict={self.tf_in: self.testing_data, self.tf_softmax_correct: self.testing_outputs_onehot})
-                print "Run {},{}".format(i,result)
                 k.append(result)
                 self.epochs_for_accuracy += 1
                 if result > self.best_accuracy:
@@ -316,9 +313,7 @@ class Network:
 def networks_available():
     networks = []
     folder_path = 'networks/models/'
-    
-    print("Loading the networks available:")
-    
+        
     for f in os.listdir(folder_path):
         if f.endswith(".pik"):
             with open(folder_path + f, "rb") as networkFile:
