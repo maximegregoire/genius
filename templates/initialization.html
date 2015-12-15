@@ -22,7 +22,7 @@
 	Start input column : <input type="number" name="startInput" required autofocus min="0" max="{{model.number_of_columns}}"/><br>
     End input column : <input type="number" name="endInput" required min="1" max="{{model.number_of_columns}}"/><br>
     Output column : <input type=number name=output min="0" required max="{{model.number_of_columns}}"><br>
-    Qualitative output : <input type="checkbox" name="qualitative" value="edit"><br>
+    Qualitative output : <input type="checkbox" name="qualitative" checked value="edit"><br>
     <input type="submit" value="Complete the model"/>
   </form>
 {% else %}

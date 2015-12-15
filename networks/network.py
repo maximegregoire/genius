@@ -20,14 +20,13 @@ class Network:
         self.name = name
         self.training_path = training_path
         self.testing_path = testing_path
-        self.training_function = None
-        self.output_function = None
         self.trained = False
         self.in_training = False
         self.input_start_column = 0
         self.input_end_column = 0
         self.output_column = 0
         self.number_of_columns = 0
+        self.reshaped = False
         
         self.qualitative_outputs = False
         self.max_qualitative_output = 0
@@ -93,6 +92,15 @@ class Network:
             max_output = max(self.getMaxOutput(self.training_data), self.getMaxOutput(self.testing_data))
             self.training_outputs, self.training_outputs_onehot = self.getQualitativeOutputs(self.training_data, max_output)
             self.testing_outputs, self.testing_outputs_onehot = self.getQualitativeOutputs(self.testing_data, max_output)
+            self.training_data = self.training_data[:,[x for x in xrange(self.input_start_column, self.input_end_column+1)]]
+            self.testing_data = self.testing_data[:,[x for x in xrange(self.input_start_column,self.input_end_column+1)]]
+        else:
+            self.training_data = np.genfromtxt(self.training_path, delimiter=self.delimitation)
+            self.testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
+            self.training_outputs = self.training_data[:,[self.output_column]]
+            self.testing_outputs = self.testing_data[:,[self.output_column]]
+            self.training_data = self.training_data[:,[x for x in xrange(self.input_start_column, self.input_end_column+1)]]
+            self.testing_data = self.testing_data[:,[x for x in xrange(self.input_start_column,self.input_end_column+1)]]
         
     def getRelativePath(self):
         return 'networks/models/' + self.name + '.pik'
@@ -106,7 +114,7 @@ class Network:
             raise ValueError("The model file is not present")
         os.remove(self.getRelativePath())
             
-    def initialize(self, method, learning_rate):
+    def initialize(self, method, learning_rate_multilayer, layers):
         self.accuracy = 0
         self.best_accuracy = 0
         self.epochs_for_accuracy = 0
@@ -120,24 +128,84 @@ class Network:
             self.method_initialized = method
             self.initialized = True
         elif method == "Multilayer perceptron":
-            self.initializeMultilayer(learning_rate)
+            #self.initialize2layer(learning_rate_multilayer)
+            #self.initializeOldMultilayer(learning_rate_multilayer, layers)
+            self.initializeDeep(learning_rate_multilayer, layers)
             self.method_initialized = method
             self.initialized = True
         else:
             #todo: error in training
             raise ValueError("Training method not recognized")
+            
+    def initializeDeep(self, learning_rate, layers):
+        if layers <= 0:
+            raise ValueError("The number of layers must be greater than zero")
     
-    def initializeMultilayer(self, learning_rate):
         if self.qualitative_outputs:
             # Network Parameters
-            n_hidden_1 = 256 # 1st layer num features
-            n_hidden_2 = 256 # 2nd layer num features
-            n_input = self.number_of_columns
+            hidden_features = []
+            for i in range(layers):
+                hidden_features.append(100)
+                
+            n_input = self.input_end_column - self.input_start_column + 1
             n_classes = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0]))
 
             # tf Graph input
             self.x = tf.placeholder("float", [None, n_input])
             self.y = tf.placeholder("float", [None, n_classes])
+
+            # Create model
+            def multilayer_perceptron(_X, _weights, _biases, _number_of_layers):
+                layers = []
+                layers.append(tf.nn.relu(tf.add(tf.matmul(_X, _weights[0]), _biases[0])))
+                
+                for i in range(_number_of_layers-1):
+                    layers.append(tf.nn.relu(tf.add(tf.matmul(layers[i], _weights[i+1]), _biases[i+1])))
+          
+                return tf.matmul(layers[_number_of_layers-1], _weights[_number_of_layers]) + _biases[_number_of_layers]
+
+            # Store layers weight & bias
+            weights = []
+            weights.append(tf.Variable(tf.random_normal([n_input, hidden_features[0]])))
+            
+            for i in range(layers - 1):
+                weights.append(tf.Variable(tf.random_normal([hidden_features[i], hidden_features[i+1]])))
+                
+            weights.append(tf.Variable(tf.random_normal([hidden_features[layers-1], n_classes])))
+            
+            biases = []
+            
+            for i in range(layers):
+                biases.append(tf.Variable(tf.random_normal([hidden_features[i]])))
+                
+            biases.append(tf.Variable(tf.random_normal([n_classes])))
+            
+            # Construct model
+            self.pred = multilayer_perceptron(self.x, weights, biases, layers)
+
+            # Define loss and optimizer
+            self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.pred, self.y)) # Softmax loss
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.cost) # Adam Optimizer
+
+            # Initializing the variables
+            init = tf.initialize_all_variables()
+
+            # Launch the graph
+            self.sess = tf.Session()
+            self.sess.run(init)
+            
+    def initialize2layer(self, learning_rate):
+        if self.qualitative_outputs:
+            # Network Parameters
+            n_hidden_1 = 256 # 1st layer num features
+            n_hidden_2 = 256 # 2nd layer num features
+                                    
+            n_input = self.input_end_column - self.input_start_column + 1
+            n_classes = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0]))
+            
+            # tf Graph input
+            self.x = tf.placeholder("float", [None, n_input], name="x")
+            self.y = tf.placeholder("float", [None, n_classes], name="y")
 
             # Create model
             def multilayer_perceptron(_X, _weights, _biases):
@@ -170,11 +238,12 @@ class Network:
             # Launch the graph
             self.sess = tf.Session()
             self.sess.run(init)
-    
+            
     def initializeKnn(self):        
         if self.qualitative_outputs:            
-            self.tf_in = tf.placeholder("float", [None, self.number_of_columns])
-            self.tf_testing = tf.placeholder("float", [self.number_of_columns])
+            n_input = self.input_end_column - self.input_start_column + 1            
+            self.tf_in = tf.placeholder("float", [None, n_input])
+            self.tf_testing = tf.placeholder("float", [n_input])
             
             # Calculate L1 Distance
             self.distance = tf.reduce_sum(tf.abs(tf.add(self.tf_in, tf.neg(self.tf_testing))), reduction_indices=1)
@@ -203,25 +272,27 @@ class Network:
     def initializeLogistic(self):        
         if self.qualitative_outputs:
             number_of_outputs = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0])) 
+            n_input = self.input_end_column - self.input_start_column + 1
+            
             # the placeholder for the inputs
-            self.tf_in = tf.placeholder("float", [None, self.number_of_columns], name="The_raw_data")
+            self.x = tf.placeholder("float", [None, n_input], name="The_raw_data")
 
             # the placeholder for the outputs
             self.tf_softmax_correct = tf.placeholder("float", [None, number_of_outputs], name="The_correct_data")
 
-            self.tf_weight = tf.Variable(tf.zeros([self.number_of_columns, number_of_outputs]))
+            self.tf_weight = tf.Variable(tf.zeros([n_input, number_of_outputs]))
             self.tf_bias = tf.Variable(tf.zeros([number_of_outputs]))
-            self.tf_softmax = tf.nn.softmax(tf.matmul(self.tf_in,self.tf_weight) + self.tf_bias)
+            self.pred = tf.nn.softmax(tf.matmul(self.x,self.tf_weight) + self.tf_bias)
 
             # Training via backpropagation
-            self.tf_cross_entropy = -tf.reduce_sum(self.tf_softmax_correct*tf.log(self.tf_softmax))
+            self.tf_cross_entropy = -tf.reduce_sum(self.tf_softmax_correct*tf.log(self.pred))
 
             # Train using tf.train.GradientDescentOptimizer
             self.tf_train_step = tf.train.GradientDescentOptimizer(0.01).minimize(self.tf_cross_entropy)
 
             # Add accuracy checking nodes
-            self.tf_correct_prediction = tf.equal(tf.argmax(self.tf_softmax,1), tf.argmax(self.tf_softmax_correct,1))
-            self.tf_accuracy = tf.reduce_mean(tf.cast(self.tf_correct_prediction, "float"))
+            self.correct_prediction = tf.equal(tf.argmax(self.pred,1), tf.argmax(self.tf_softmax_correct,1))
+            self.tf_accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, "float"))
             
             # Initialize and run
             tf.Session().close()
@@ -253,6 +324,10 @@ class Network:
     def trainMultilayer(self, number_of_epochs, stop_at_100_accuracy):
         display_step = 1
         accuracy = 0
+        if (self.reshaped == False):
+            #self.training_data = self.training_data.reshape(len(self.training_data), len(self.training_data[0][0]))
+            #self.testing_data = self.testing_data.reshape(len(self.testing_data), len(self.testing_data[0][0]))
+            self.reshaped = True
         for epoch in range(number_of_epochs):
             avg_cost = 0.
             # Fit training using batch data
@@ -264,12 +339,15 @@ class Network:
             # Calculate accuracy
             tf_accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
             accuracy = tf_accuracy.eval({self.x: self.testing_data, self.y: self.testing_outputs_onehot}, session=self.sess)
+            print "Epoch {}, Accuracy = {}, \t Average cost = {}".format(epoch, accuracy, avg_cost)
             self.epochs_for_accuracy += 1
             if accuracy > self.best_accuracy:
                 self.best_accuracy = accuracy
                 self.epochs_for_best_accuracy = self.epochs_for_accuracy
             if stop_at_100_accuracy and accuracy == 1:
                 break
+                
+        #self.getOutputMultilayer()
         self.accuracy = accuracy    
         self.trained = True
            
@@ -282,9 +360,10 @@ class Network:
             saved=0
             result=0
             for i in range(number_of_epochs):
-                self.sess.run(self.tf_train_step, feed_dict={self.tf_in: self.training_data, self.tf_softmax_correct: self.training_outputs_onehot})
+                self.sess.run(self.tf_train_step, feed_dict={self.x: self.training_data, self.tf_softmax_correct: self.training_outputs_onehot})
                 # Print accuracy
-                result = self.sess.run(self.tf_accuracy, feed_dict={self.tf_in: self.testing_data, self.tf_softmax_correct: self.testing_outputs_onehot})
+                result = self.sess.run(self.tf_accuracy, feed_dict={self.x: self.testing_data, self.tf_softmax_correct: self.testing_outputs_onehot})
+                print "Epoch {}\t Accuracy = {}".format(i, result)
                 k.append(result)
                 self.epochs_for_accuracy += 1
                 if result > self.best_accuracy:
@@ -297,18 +376,23 @@ class Network:
                     # Saving
                     #saver.save(self.sess,"./tenIrisSave/saveOne")
             
+            #self.getOutputMultilayer()
             self.accuracy = result
             self.trained = True            
 
         else:
             raise ValueError("NOT IMPLEMENTED YET")
         
-        
+    def getOutputMultilayer(self):
+        inputs = np.array([0.993907341,0.726324016,0.99736115,0.677222966,0.654576652,0.48444006,0.855064044,0.995660934,0.991843484,0.677317723,0.71134155,0.66282646,0.497109384,0.922318371,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0])
+        inputs = inputs.reshape(1, 38)
+        print "predictions ", self.pred.eval(feed_dict={self.x: inputs}, session=self.sess)
         
     def get_output(self, inputs):
-    	if output_function == None:
-    		raise ValueError("Output function undefined")
-        return Result(self, inputs, self.output_function(inputs))
+    	#if output_function == None:
+    	#	raise ValueError("Output function undefined")
+        #todo: fix
+        return Result(self, inputs, getOutputMultilayer(inputs))
     
 def networks_available():
     networks = []

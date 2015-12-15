@@ -52,10 +52,7 @@
 			                    <input type="radio" name="method" checked id="Logistic regression" required value="Logistic regression"/> Logistic regression
 		                </td>
 		                <td>
-		                    Number of epochs 
-		                </td>
-		                <td>
-		                    <input type="number" value="10" required name="epochsLogistic"><br>
+		                    Number of epochs <input type="number" value="10" required name="epochsLogistic"><br>
 		                </td>
 		            </tr>
 		            <tr>
@@ -64,24 +61,18 @@
 			                    <input type="radio" name="method" id="K-nearest neighbors" required value="K-nearest neighbors"/> K-nearest neighbors
 		                </td>
 		                <td>
-		                    Value of K 
-		                </td>
-		                <td>
-		                    <input type="number" value="1" required name="k">
+		                    Value of K <input type="number" value="1" required name="k">
 		                </td>
 		            </tr>
 		            <tr>
 		                <td>
 			                    <img src="{{ url_for('static',filename='img/multilayer.png')}}" height="66" width="100"/>
-			                    <input type="radio" name="method" id="Multilayer perceptron" required value="Multilayer perceptron"/> Multilayer perceptron
+			                    <input type="radio" name="method" id="8-layer perceptron" required value="Multilayer perceptron"/> 8-layer perceptron
 		                </td>
 		                <td>
-		                    Learning rate<br>
-		                    Number of epochs
-		                </td>
-		                <td>
-		                    <input type="number" step="0.0001" value="0.001" required name="learning"><br>
-		                    <input type="number" value="10" required name="epochsMultilayer">
+		                    Learning rate <input type="number" step="0.0001" value="0.001" required name="learningRate"><br>
+		                    Number of epochs <input type="number" value="10" required name="epochsMultilayer"><br>
+		                    Number of hidden layers <input type="number" value="10" min="1" required name="layers"><br>
 		                </td>
 		            </tr>
 		        </table><br>

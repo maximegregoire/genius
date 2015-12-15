@@ -77,10 +77,11 @@ def modelSubmission():
             number_of_epochs_logistic = int(request.form['epochsLogistic'])
             number_of_epochs_multilayer = int(request.form['epochsMultilayer'])
             k = int(request.form['k'])
-            learning_rate = float(request.form['learning'])
+            learning_rate_deep = float(request.form['learningRate'])
+            layers = int(request.form['layers'])
             stop_at_100_accuracy = request.form.getlist('100')
             if not n.initialized or method != n.method_initialized:
-                n.initialize(method, learning_rate)
+                n.initialize(method, learning_rate_deep, layers)
             n.train(method, number_of_epochs_logistic, number_of_epochs_multilayer, stop_at_100_accuracy=stop_at_100_accuracy)
              
             #todo : update progress

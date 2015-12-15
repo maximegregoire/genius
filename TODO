@@ -1,0 +1,13 @@
+-Parser
+-Quantitative outputs
+-Python file to generate html parameters, in order not to hardcode models
+-Get output (csv)
+-Get output (manual values)
+-Create a script to get all the depencies
+-Create an option "Train at every N epochs" instead of every epochs
+-Save/Load trained networks
+-Reset model if number of layers or learning rate changes
+-Show training progress
+-Stop training
+-Normalize inputs
+-Graph the accuracy
