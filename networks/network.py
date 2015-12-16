@@ -81,6 +81,9 @@ class Network:
         self.testing_data, self.testing_outputs = parsing.parse(self.testing_path, qualitative = self.qualitative_outputs, output_column = self.output_column)
         print "len(training_outputs) = ", len(self.training_outputs)
         print "len(training_outputs[0]) = ", len(self.training_outputs[0])
+        self.input_start_column = 0
+        self.input_end_column = len(self.training_data[0]) - 1
+        print "input_end_column = ", self.input_end_column
         return 1
     
         if self.qualitative_outputs:
