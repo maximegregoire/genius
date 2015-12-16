@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 # Convert the first column of data to one hot
 # Ex for values ranging from 0 to 2:
@@ -16,3 +17,26 @@ def convertOneHot(data, column, max_value = None):
         y_onehot[i]=[0]*(max_value + 1)
         y_onehot[i][j]=1
     return (y,y_onehot)
+    
+def isCategory(col):
+    for row in col:
+        if isinstance(row, basestring):
+            return True
+    return False
+    
+def parse(file_path, qualitative = False, output_column = 0):
+    df = pd.read_csv(file_path)
+    parsed_df = pd.DataFrame()
+    output = pd.DataFrame()
+    for column in df:
+        if isCategory(df[column]):
+            parsed_df = pd.concat([parsed_df, pd.get_dummies(df[column])], axis=1)
+        elif output_column == df.columns.get_loc(column):
+            if qualitative:
+                output = pd.get_dummies(df[column])
+            else:
+                output = df[column]
+        else:
+            parsed_df[column] = df[column]
+    return parsed_df.values, output.values
+

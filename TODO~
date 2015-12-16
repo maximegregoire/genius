@@ -10,3 +10,4 @@
 -Show training progress
 -Stop training
 -Normalize inputs
+-Graph the accuracy

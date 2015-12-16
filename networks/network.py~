@@ -73,10 +73,16 @@ class Network:
     def getQualitativeOutputs(self, data, max_output):
         if data == None:
             raise ValueError("The data has not been loaded")
-        outputs, outputs_onehot = parsing.convertOneHot(data, self.output_column, max_output)
-        return (outputs, outputs_onehot)
+        outputs, outputs = parsing.convertOneHot(data, self.output_column, max_output)
+        return (outputs, outputs)
         
     def extractData(self):
+        self.training_data, self.training_outputs = parsing.parse(self.training_path, qualitative = self.qualitative_outputs, output_column = self.output_column)
+        self.testing_data, self.testing_outputs = parsing.parse(self.testing_path, qualitative = self.qualitative_outputs, output_column = self.output_column)
+        print "len(training_outputs) = ", len(self.training_outputs)
+        print "len(training_outputs[0]) = ", len(self.training_outputs[0])
+        return 1
+    
         if self.qualitative_outputs:
             if self.testing_path == None:
                 full_training = np.genfromtxt(self.training_path, delimiter=self.delimitation)
@@ -90,8 +96,8 @@ class Network:
                 self.testing_data = np.genfromtxt(self.testing_path, delimiter=self.delimitation)
                 
             max_output = max(self.getMaxOutput(self.training_data), self.getMaxOutput(self.testing_data))
-            self.training_outputs, self.training_outputs_onehot = self.getQualitativeOutputs(self.training_data, max_output)
-            self.testing_outputs, self.testing_outputs_onehot = self.getQualitativeOutputs(self.testing_data, max_output)
+            self.training_outputs, self.training_outputs = self.getQualitativeOutputs(self.training_data, max_output)
+            self.testing_outputs, self.testing_outputs = self.getQualitativeOutputs(self.testing_data, max_output)
             self.training_data = self.training_data[:,[x for x in xrange(self.input_start_column, self.input_end_column+1)]]
             self.testing_data = self.testing_data[:,[x for x in xrange(self.input_start_column,self.input_end_column+1)]]
         else:
@@ -148,7 +154,8 @@ class Network:
                 hidden_features.append(100)
                 
             n_input = self.input_end_column - self.input_start_column + 1
-            n_classes = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0]))
+            n_classes = max(len(self.training_outputs[0]),len(self.testing_outputs[0]))
+            print "n_classes = ", n_classes
 
             # tf Graph input
             self.x = tf.placeholder("float", [None, n_input])
@@ -185,7 +192,7 @@ class Network:
 
             # Define loss and optimizer
             self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.pred, self.y)) # Softmax loss
-            self.optimizer = tf.train.FtrlOptimizer(learning_rate=learning_rate).minimize(self.cost) # Adam Optimizer
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.cost) # Adam Optimizer
 
             # Initializing the variables
             init = tf.initialize_all_variables()
@@ -201,7 +208,7 @@ class Network:
             n_hidden_2 = 256 # 2nd layer num features
                                     
             n_input = self.input_end_column - self.input_start_column + 1
-            n_classes = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0]))
+            n_classes = max(len(self.training_outputs[0]),len(self.testing_outputs[0]))
             
             # tf Graph input
             self.x = tf.placeholder("float", [None, n_input], name="x")
@@ -259,7 +266,7 @@ class Network:
                 # Get nearest neighbor
                 nn_index = self.sess.run(self.prediction, feed_dict={self.tf_in: self.training_data, self.tf_testing: self.testing_data[i,:]})
                 # Calculate accuracy
-                if np.argmax(self.training_outputs_onehot[nn_index]) == np.argmax(self.testing_outputs_onehot[i]):
+                if np.argmax(self.training_outputs[nn_index]) == np.argmax(self.testing_outputs[i]):
                     accuracy += 1./len(self.testing_data)
             self.accuracy = accuracy
             self.epochs_for_accuracy = "N/A"
@@ -271,7 +278,7 @@ class Network:
     
     def initializeLogistic(self):        
         if self.qualitative_outputs:
-            number_of_outputs = max(len(self.training_outputs_onehot[0]),len(self.testing_outputs_onehot[0])) 
+            number_of_outputs = max(len(self.training_outputs[0]),len(self.testing_outputs[0])) 
             n_input = self.input_end_column - self.input_start_column + 1
             
             # the placeholder for the inputs
@@ -331,14 +338,14 @@ class Network:
         for epoch in range(number_of_epochs):
             avg_cost = 0.
             # Fit training using batch data
-            self.sess.run(self.optimizer, feed_dict={self.x: self.training_data, self.y: self.training_outputs_onehot})
+            self.sess.run(self.optimizer, feed_dict={self.x: self.training_data, self.y: self.training_outputs})
             # Compute average loss
-            avg_cost += self.sess.run(self.cost, feed_dict={self.x: self.training_data, self.y: self.training_outputs_onehot})/len(self.training_data)                
+            avg_cost += self.sess.run(self.cost, feed_dict={self.x: self.training_data, self.y: self.training_outputs})/len(self.training_data)                
             # Test model
             correct_prediction = tf.equal(tf.argmax(self.pred, 1), tf.argmax(self.y, 1))
             # Calculate accuracy
             tf_accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            accuracy = tf_accuracy.eval({self.x: self.testing_data, self.y: self.testing_outputs_onehot}, session=self.sess)
+            accuracy = tf_accuracy.eval({self.x: self.testing_data, self.y: self.testing_outputs}, session=self.sess)
             print "Epoch {}, Accuracy = {}, \t Average cost = {}".format(epoch, accuracy, avg_cost)
             self.epochs_for_accuracy += 1
             if accuracy > self.best_accuracy:
@@ -360,9 +367,9 @@ class Network:
             saved=0
             result=0
             for i in range(number_of_epochs):
-                self.sess.run(self.tf_train_step, feed_dict={self.x: self.training_data, self.tf_softmax_correct: self.training_outputs_onehot})
+                self.sess.run(self.tf_train_step, feed_dict={self.x: self.training_data, self.tf_softmax_correct: self.training_outputs})
                 # Print accuracy
-                result = self.sess.run(self.tf_accuracy, feed_dict={self.x: self.testing_data, self.tf_softmax_correct: self.testing_outputs_onehot})
+                result = self.sess.run(self.tf_accuracy, feed_dict={self.x: self.testing_data, self.tf_softmax_correct: self.testing_outputs})
                 print "Epoch {}\t Accuracy = {}".format(i, result)
                 k.append(result)
                 self.epochs_for_accuracy += 1

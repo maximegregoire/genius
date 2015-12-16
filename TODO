@@ -11,3 +11,4 @@
 -Stop training
 -Normalize inputs
 -Graph the accuracy
+-Delete uploaded file when deleting model OR start webserver
