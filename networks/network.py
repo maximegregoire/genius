@@ -77,13 +77,10 @@ class Network:
         return (outputs, outputs)
         
     def extractData(self):
-        self.training_data, self.training_outputs = parsing.parse(self.training_path, qualitative = self.qualitative_outputs, output_column = self.output_column)
-        self.testing_data, self.testing_outputs = parsing.parse(self.testing_path, qualitative = self.qualitative_outputs, output_column = self.output_column)
-        print "len(training_outputs) = ", len(self.training_outputs)
-        print "len(training_outputs[0]) = ", len(self.training_outputs[0])
+        self.training_data, self.training_outputs = parsing.parse(self.training_path, self.input_start_column, self.input_end_column, qualitative = self.qualitative_outputs, output_column = self.output_column)
+        self.testing_data, self.testing_outputs = parsing.parse(self.testing_path, self.input_start_column, self.input_end_column, qualitative = self.qualitative_outputs, output_column = self.output_column)
         self.input_start_column = 0
         self.input_end_column = len(self.training_data[0]) - 1
-        print "input_end_column = ", self.input_end_column
         return 1
     
         if self.qualitative_outputs:
@@ -137,9 +134,9 @@ class Network:
             self.method_initialized = method
             self.initialized = True
         elif method == "Multilayer perceptron":
-            #self.initialize2layer(learning_rate_multilayer)
+            self.initialize2layer(learning_rate_multilayer)
             #self.initializeOldMultilayer(learning_rate_multilayer, layers)
-            self.initializeDeep(learning_rate_multilayer, layers)
+            #self.initializeDeep(learning_rate_multilayer, layers)
             self.method_initialized = method
             self.initialized = True
         else:

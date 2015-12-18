@@ -24,18 +24,20 @@ def isCategory(col):
             return True
     return False
     
-def parse(file_path, qualitative = False, output_column = 0):
+def parse(file_path, start_column, end_column, qualitative = False, output_column = 0):
     df = pd.read_csv(file_path)
     parsed_df = pd.DataFrame()
     output = pd.DataFrame()
     for column in df:
-        if isCategory(df[column]):
-            parsed_df = pd.concat([parsed_df, pd.get_dummies(df[column])], axis=1)
-        elif output_column == df.columns.get_loc(column):
+        if output_column == df.columns.get_loc(column):
             if qualitative:
                 output = pd.get_dummies(df[column])
             else:
                 output = df[column]
+        if df.columns.get_loc(column) > end_column or df.columns.get_loc(column) < start_column:
+            continue
+        elif isCategory(df[column]):
+            parsed_df = pd.concat([parsed_df, pd.get_dummies(df[column])], axis=1)
         else:
             parsed_df[column] = df[column]
     return parsed_df.values, output.values
